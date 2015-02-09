@@ -1,8 +1,9 @@
 module Main where
 
-import Helpers
+--import Helpers
 
 import qualified Shapes
+import qualified MonadProblem
 
 
 
@@ -12,5 +13,5 @@ map2 f a = (f (head a)) : (map2 f (tail a))
 
 
 
-main = putStrLn Shapes.test
+main = putStrLn MonadProblem.test
 
