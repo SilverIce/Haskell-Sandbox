@@ -4,7 +4,7 @@ module Main where
 
 import qualified Shapes
 import qualified MonadProblem
-
+import qualified BTree
 
 
 map2 :: (a -> b) -> [a] -> [b]
@@ -13,5 +13,5 @@ map2 f a = (f (head a)) : (map2 f (tail a))
 
 
 
-main = putStrLn MonadProblem.test
+main = putStrLn BTree.test
 
