@@ -13,5 +13,10 @@ map2 f a = (f (head a)) : (map2 f (tail a))
 
 
 
-main = putStrLn BTree.test
+main = do
+	putStrLn BTree.test
+	--putStrLn MonadProblem.testmain = do
+	--putStrLn "Hello, what's your name?"
+	--name <- getLine
+	--putStrLn ("Hey " ++ name ++ ", you rock!")
 

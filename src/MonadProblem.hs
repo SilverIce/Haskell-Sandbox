@@ -56,6 +56,18 @@ sqUnit :: a -> [a]
 sqUnit a = [a]
 
 
+--randomizer :: StdGen -> (a, StdGen)
+randomizer n g = let (r, g') = random g in ((r + n) `mod` 10, g')
+
+runit x g = (x, g)
+rlift f = runit . f
+
+rbind :: (a -> StdGen -> (b, StdGen)) -> (StdGen -> (a, StdGen)) -> (StdGen -> (b, StdGen))
+rbind rg rf g = let (x, g') = rf g in rg x g'
+
+rtest :: Int -> StdGen ->  (Int,StdGen)
+rtest = rbind (rlift (+10)) . randomizer
+
 -----------------------
 
 --ex7_bind :: (a → StdGen → (b,StdGen)) → (StdGen → (a,StdGen)) → (StdGen → (b,StdGen))
@@ -70,4 +82,7 @@ test = "Testing begins\n"
 		++ runTest "g, . f conveyer" (bind f' . g' $ 3)
 		++ runTest "cubic sq from 1" (cbrt' (1 :+ 0))
 		++ runTest "sqrt' . cbrt' conveyer" (sqBind cbrt' . sqrt' $ (1 :+ 0))
-		++ runTest "random" ((fst . random . mkStdGen $ 1) :: Int)
+		++ runTest "random" (fst . random . mkStdGen $ 1::Int)
+		++ runTest "random2" ((fst $ rtest 0 (mkStdGen 1)) :: Int)
+		++ runTest "plus test" ((sqrt . sqrt $ 10.0))
+
