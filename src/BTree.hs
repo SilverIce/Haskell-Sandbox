@@ -1,9 +1,24 @@
-module BTree where
+{-# LANGUAGE RankNTypes #-}
+module BTree (
+    BTree(Empty, Node),
 
-import Data.List (sort)
---import qualified Data.List.Utils as UList
+    fromList,
+    fromSortedUniqueList,
 
-data BTree a = Empty | Node a (BTree a, BTree a) --deriving (Show)
+    contains,
+    valueList,
+    merge,
+    remove,
+    insert,
+    validate,
+    rebalance,
+
+    test,
+) where
+
+import qualified Data.List as List
+
+data BTree a = Empty | Node a (BTree a, BTree a)
 
 instance (Show a) => Show (BTree a) where
     show t = '`' : (tell t) ++ "`"
@@ -13,9 +28,8 @@ tell (Empty) = "_"
 tell (Node a (Empty, Empty)) = show a
 tell (Node a (l, r)) = (show a) ++ " {" ++ tell l ++ " " ++ tell r ++ "}"
 
+leaf :: a -> BTree a
 leaf a = Node a (Empty, Empty)
-
---Node a (Leaf l, Leaf r) = Node a (Leaf r, Leaf l)
 
 contains :: (Ord a) => BTree a -> a -> Bool
 contains Empty _ = False
@@ -28,16 +42,6 @@ valueList Empty = []
 valueList (Node a (l, r)) = valueList l ++ [a] ++ valueList r
 
 
---sort [] = []
---sort [x] = [x]
---sort (l:r:xs) = case l `compare` r of GT -> r : (sort $ l:xs)
---                                      _ -> l : (sort $ r:xs)
-unique [] = []
-unique [x] = [x]
-unique (l:r:xs)
-    | l == r = unique $ r:xs
-    | otherwise = l : (unique $ r:xs)
-
 insert :: (Ord a) => a -> BTree a -> BTree a
 insert v Empty = leaf v
 insert v (Node a (l, r)) = case v `compare` a of EQ -> Node a (l, r)
@@ -45,17 +49,10 @@ insert v (Node a (l, r)) = case v `compare` a of EQ -> Node a (l, r)
                                                  LT -> Node a (insert v l, r)
 
 
-mergeList :: Ord a => [a] -> [a] -> [a]
-mergeList xs [] = xs
-mergeList [] xs = xs
-mergeList a@(h:first) b@(c:second)
-        | h <= c = h:mergeList first b
-        | h > c = c:mergeList a second
-
 merge :: (Ord a) => BTree a -> BTree a -> BTree a
 merge l Empty = l
 merge Empty r = r
-merge l r = fromSortedUniqueList $ mergeList (valueList l) (valueList r)
+merge l r = fromList $ (valueList l) ++ (valueList r)
 
 remove :: (Ord a) => a -> BTree a -> BTree a
 remove _ Empty = Empty
@@ -66,16 +63,18 @@ remove v (Node a (l, r)) = case v `compare` a of GT -> Node a (l, remove v r)
 validate :: (Ord a) => BTree a -> Bool
 validate Empty = True
 validate (Node v (l, r)) = (cmp v (>) l) && (cmp v (<) r) && validate l && validate r
-                                where   cmp v f (Node nv _) = v `f` nv
+                                where   cmp a f (Node nv _) = a `f` nv
                                         cmp _ _ Empty = True
 
 rebalance :: (Ord a) => BTree a -> BTree a
 rebalance tree = fromSortedUniqueList $ valueList tree
 
 fromList :: (Ord a) => [a] -> BTree a
-fromList ar = fromSortedUniqueList . unique . sort $ ar
+fromList ar = fromSortedUniqueList . List.nub . List.sort $ ar
 
 fromSortedUniqueList :: (Ord a) => [a] -> BTree a
+fromSortedUniqueList [] = Empty
+fromSortedUniqueList [x] = leaf x
 fromSortedUniqueList a = _fromSortedUniqueList a (length a)
 
 _fromSortedUniqueList [] _ = Empty
@@ -85,18 +84,23 @@ _fromSortedUniqueList sa l = Node rh (_fromSortedUniqueList la left, _fromSorted
     right = l - left - 1
     (la, (rh:rt)) = splitAt left sa
 
---testContains :: (Ord a, Show a) => BTree a -> String
+
+testContains :: (Show a, Ord a) => BTree a -> String
 testContains tree = show $ map f (valueList tree)
                 where f v = "contains " ++ (show v) ++ " = " ++ (show $ contains tree v)
 
 
 -- op. name, args, resulting tree
-uniTest0 opname func = ((opname ++ ": ") ++) . show . func 
-uniTest1 opname func a1 = ((opname ++ " " ++ (show a1) ++ ": ") ++) . show . (func a1)
+uniTest0 :: Show b => [Char] -> (a -> b) -> a -> [Char]
+uniTest0 opname func = ((opname ++ ": ") ++) . show . func
+
+uniTest1 :: (Show b, Show a1) =>
+              [Char] -> (a1 -> a -> b) -> a1 -> a -> [Char]
+uniTest1 opname func a1 = ((opname ++ " " ++ show a1 ++ ": ") ++) . show . (func a1)
 
 testTree :: (Ord a, Show a) => BTree a -> [BTree a -> String] -> String
-testTree tree functions = "given a tree " ++ (show tree) ++ ":\n" ++ (showList functions)
-                        where showList l = foldr (\f s -> (f tree) ++ "\n" ++ s) "" l
+testTree tree functions = "given a tree " ++ show tree ++ ":\n" ++ showLst functions
+                        where showLst l = foldr (\f s -> f tree ++ "\n" ++ s) "" l
 
 test :: String
 test = 
@@ -115,5 +119,4 @@ test =
                     ]
             insr = uniTest1 "insert" insert
             rm = uniTest1 "remove" remove
-    --in show . unique . sort $ [1..5]
-    --in "tree " ++ (tell tree) ++ " contains 8: " ++ (show $ contains tree 8)
+
