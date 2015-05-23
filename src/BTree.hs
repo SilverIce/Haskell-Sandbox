@@ -17,6 +17,7 @@ module BTree (
 ) where
 
 import qualified Data.List as List
+import Data.Maybe
 
 data BTree a = Empty | Node a (BTree a, BTree a)
 
@@ -26,10 +27,14 @@ instance (Show a) => Show (BTree a) where
 tell :: (Show a) => BTree a -> String
 tell (Empty) = "_"
 tell (Node a (Empty, Empty)) = show a
-tell (Node a (l, r)) = (show a) ++ " {" ++ tell l ++ " " ++ tell r ++ "}"
+tell (Node a (l, r)) = show a ++ " {" ++ tell l ++ " " ++ tell r ++ "}"
 
 leaf :: a -> BTree a
 leaf a = Node a (Empty, Empty)
+
+get :: BTree a -> Maybe a
+get (Node v _) = Just v
+get Empty      = Nothing
 
 contains :: (Ord a) => BTree a -> a -> Bool
 contains Empty _ = False
@@ -44,22 +49,22 @@ valueList (Node a (l, r)) = valueList l ++ [a] ++ valueList r
 
 insert :: (Ord a) => a -> BTree a -> BTree a
 insert v Empty = leaf v
-insert v (Node a (l, r)) = case v `compare` a of EQ -> Node a (l, r)
-                                                 GT -> Node a (l, insert v r)
-                                                 LT -> Node a (insert v l, r)
+insert v tree@(Node a (l, r)) = case v `compare` a of EQ -> tree
+                                                      GT -> Node a (l, insert v r)
+                                                      LT -> Node a (insert v l, r)
 
 
 merge :: (Ord a) => BTree a -> BTree a -> BTree a
 merge l Empty = l
 merge Empty r = r
-merge l r = fromList $ (valueList l) ++ (valueList r)
+merge l r = fromList $ valueList l ++ valueList r
 
 remove :: (Ord a) => a -> BTree a -> BTree a
 remove _ Empty = Empty
 remove v (Node a (l, r)) = case v `compare` a of GT -> Node a (l, remove v r)
                                                  LT -> Node a (remove v l, r)
                                                  EQ -> merge l r
-                              
+
 validate :: (Ord a) => BTree a -> Bool
 validate Empty = True
 validate (Node v (l, r)) = (cmp v (>) l) && (cmp v (<) r) && validate l && validate r
@@ -82,16 +87,16 @@ _fromSortedUniqueList [x] _ = leaf x
 _fromSortedUniqueList sa l = Node rh (_fromSortedUniqueList la left, _fromSortedUniqueList rt right) where
     left = l `div` 2
     right = l - left - 1
-    (la, (rh:rt)) = splitAt left sa
+    (la, rh:rt) = splitAt left sa
 
 
 testContains :: (Show a, Ord a) => BTree a -> String
 testContains tree = show $ map f (valueList tree)
-                where f v = "contains " ++ (show v) ++ " = " ++ (show $ contains tree v)
+                where f v = "contains " ++ show v ++ " = " ++ (show $ contains tree v)
 
 
 -- op. name, args, resulting tree
-uniTest0 :: Show b => [Char] -> (a -> b) -> a -> [Char]
+uniTest0 :: Show b => String -> (a -> b) -> a -> [Char]
 uniTest0 opname func = ((opname ++ ": ") ++) . show . func
 
 uniTest1 :: (Show b, Show a1) =>
@@ -103,7 +108,7 @@ testTree tree functions = "given a tree " ++ show tree ++ ":\n" ++ showLst funct
                         where showLst l = foldr (\f s -> f tree ++ "\n" ++ s) "" l
 
 test :: String
-test = 
+test =
     let ls = [1,-9,3,8,2,5,100]
         tree = fromList ls
     in testTree tree tests
