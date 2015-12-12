@@ -36,10 +36,10 @@ bind f' (gv, gs) = let (fv, fs) = f' gv in (fv, gs ++ " THEN " ++ fs)
 -- k E [0, n)
 nthComplexRoot :: (RealFloat a) => Complex a -> Int -> Int -> Complex a
 nthComplexRoot c n k = (rsq * cos drb) :+ (rsq * sin drb)
-			where 
-				(r, x) = polar c
-				drb = (x + (fromIntegral k) * 2.0 * pi) / fromIntegral n
-				rsq = r ** (1.0 / fromIntegral n)
+                        where 
+                                (r, x) = polar c
+                                drb = (x + (fromIntegral k) * 2.0 * pi) / fromIntegral n
+                                rsq = r ** (1.0 / fromIntegral n)
 
 complexRoots :: (RealFloat a) => Complex a -> Int -> [Complex a]
 complexRoots c n = [nthComplexRoot c n k | k <- [0..n - 1]]
@@ -79,10 +79,10 @@ runTest descr testResult = "test '" ++ descr ++ "':\t" ++ (show testResult) ++ "
 
 test :: String
 test = "Testing begins\n"
-		++ runTest "g, . f conveyer" (bind f' . g' $ 3)
-		++ runTest "cubic sq from 1" (cbrt' (1 :+ 0))
-		++ runTest "sqrt' . cbrt' conveyer" (sqBind cbrt' . sqrt' $ (1 :+ 0))
-		++ runTest "random" (fst . random . mkStdGen $ 1::Int)
-		++ runTest "random2" ((fst $ rtest 0 (mkStdGen 1)) :: Int)
-		++ runTest "plus test" ((sqrt . sqrt $ 10.0))
+                ++ runTest "g, . f conveyer" (bind f' . g' $ 3)
+                ++ runTest "cubic sq from 1" (cbrt' (1 :+ 0))
+                ++ runTest "sqrt' . cbrt' conveyer" (sqBind cbrt' . sqrt' $ (1 :+ 0))
+                ++ runTest "random" (fst . random . mkStdGen $ 1::Int)
+                ++ runTest "random2" ((fst $ rtest 0 (mkStdGen 1)) :: Int)
+                ++ runTest "plus test" ((sqrt . sqrt $ 10.0))
 

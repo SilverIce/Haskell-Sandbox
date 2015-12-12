@@ -24,6 +24,10 @@ data BTree a = Empty | Node a (BTree a, BTree a)
 instance (Show a) => Show (BTree a) where
     show t = '`' : (tell t) ++ "`"
 
+instance Functor BTree where
+    fmap f (Node a (l, r)) = Node (f a) (fmap f l, fmap f r)
+    fmap _ Empty = Empty
+
 tell :: (Show a) => BTree a -> String
 tell (Empty) = "_"
 tell (Node a (Empty, Empty)) = show a
