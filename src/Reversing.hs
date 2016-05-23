@@ -9,19 +9,23 @@ import           Data.Maybe      as Maybe
 import qualified Data.Text       as Text
 import           Text.Read       (readMaybe)
 
+
+type StreamPosition = Int
+type FieldId = Int
+type FieldAddress = Int
+type Comment = String
+
 data FieldType = Unk | Byte | GuidByte | Bit | DWord deriving (Enum, Show, Read)
 
-data Field = Field {    fieldAddress    :: Int,
-                        fieldType       :: FieldType,
-                        streamPos       :: Int,
-                        fieldId         :: Int
+data Field = Field {    fieldType       :: FieldType,
+                        fieldAddress    :: FieldAddress,
+                        streamPos       :: StreamPosition,
+                        fieldId         :: FieldId,
+                        comment         :: Maybe String
                    }
-             | InputField {
-                        fieldAddress    :: Int,
-                        fieldType       :: FieldType,
-                        streamPos       :: Int
-                    }
-                   --deriving (Show)
+
+data InputField = InputField FieldType FieldAddress (Maybe Comment)
+                  deriving (Show, Read)
 
 type Fields = [Field]
 
@@ -31,11 +35,11 @@ type HandlerName = String
 type CommandHandlerResult = (Fields, String)
 type CommandHandler = CommandArgs -> Fields -> CommandHandlerResult
 
-data CommandHandlerEntry = CommandHandlerEntry {
-    name :: String,
-    description :: Maybe String,
-    handler :: CommandHandler
-}
+--data CommandHandlerEntry = CommandHandlerEntry {
+--    name :: String,
+--    description :: Maybe String,
+--    handler :: CommandHandler
+--}
     --deriving (Show)
 
 instance Show Field where
@@ -49,13 +53,9 @@ showFields :: Fields -> String
 showFields = foldl (\ini fl -> ini ++ show fl ++ "\n") "\n"
 
 
-parseField :: CommandArgs -> Maybe Field
-parseField input = do
-    let (sAddr:sType:_) = splitWhen (' ' ==) input
-    addr <- readMaybe sAddr
-    typ <- readMaybe sType
-    return $ Field { fieldAddress = addr, fieldType = typ }
-
+parseField :: CommandArgs -> Maybe InputField
+parseField input = readMaybe tupled where
+    tupled = "InputField " ++ input
 
 stringSplit :: Char -> String -> (String, String)
 stringSplit c s = maybe (s, []) (dropSpace . (`splitAt` s)) (List.elemIndex c s)
@@ -65,9 +65,18 @@ stringSplit c s = maybe (s, []) (dropSpace . (`splitAt` s)) (List.elemIndex c s)
 findHandler :: HandlerName -> CommandHandler
 findHandler name = Maybe.fromMaybe zeroHandler (List.lookup name handlers)
 
-pushField :: Fields -> Field -> Fields
-pushField fields@(prev:_) fld = fld { streamPos = 1 + streamPos prev} : fields
-pushField [] fld = [fld { streamPos = 0 }]
+fromInputField :: InputField -> Field
+fromInputField (InputField typ addr comm) = Field {
+    fieldAddress = addr
+    , fieldType = typ
+    , comment = comm
+    , fieldId = -1
+    , streamPos = -1
+    }
+
+pushField :: Fields -> InputField -> Fields
+pushField fields@(prev:_) fld = (fromInputField fld) { streamPos = 1 + streamPos prev} : fields
+pushField [] fld = [(fromInputField fld) { streamPos = 0 }]
 
 zeroFields :: Fields
 zeroFields = []
@@ -82,13 +91,15 @@ guidRule :: Fields -> Maybe CondenseFieldRule
 guidRule [] = Nothing
 guidRule fs = if isGuid fs then Just condenseGuid else Nothing
     where
+        -- length >= 16
         isGuid fs = False
         condenseGuid _ (f:fs) = ([f], fs)
+        match (Field GuidByte _ _ _ _):(Field Bit _ _ _ _) = id
 
 
 zeroRule :: Fields -> Maybe CondenseFieldRule
 zeroRule _ = Just $ \id (f:fs) -> ([handleFld id f], fs)
-    where handleFld id fl = fl { fieldId = id}
+    where handleFld id fl = fl {fieldId = id}
 
 findCondenseRule :: [RuleGetter] -> Fields -> CondenseFieldRule
 --findCondenseRule rules fields = zeroRule fields  -- mock
@@ -102,10 +113,12 @@ condenseRules = [guidRule, zeroRule]
 
 condenseFields :: Fields -> Fields
 --condenseFields fs = fst $ (findCondenseRule condenseRules fs) 0 fs
-condenseFields fs = make 0 ([], List.sortBy (comparing fieldAddress) fs)
+condenseFields fs = make 0 ([], sortByAdress fs)
     where
-        make counter (f, s@(_:_)) = f ++ make (counter + 1) (findRule (counter + 1) s)
-        make _       (f, []) = f
+        sortByAdress = List.sortBy (comparing fieldAddress)
+        make _       (f,[]) = f
+        make counter (f,s) = f ++ make (counter + 1) (findRule (counter + 1) s)
+        --make _       (f, []) = f
         findRule counter fields = (findCondenseRule condenseRules fields) counter fields
 
 ------------------------------------
@@ -142,7 +155,9 @@ test = do
     --let line = "14 Bit"
     let fields = zeroFields
     --putStrLn $ "field is: " ++ show fields
-    --putStrLn $ show (stringSplit ' ' "add 0 Unk")
+    putStrLn $ show (InputField Byte 0 (Just ""))
+    let x = "(Byte, 1, Just \"toto\")"
+    putStrLn . show $ (read :: String -> (FieldType,Int,Maybe String)) x
 
     cycle' (\t -> do
         command <- getLine
